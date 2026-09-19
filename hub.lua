@@ -6,10 +6,10 @@ local TweenService = game:GetService("TweenService")
 
 type ScriptEntry = {
 	id: string,
-    name: string,
-    gameId: number?,
-    description: string,
-    run: () -> (),
+	name: string,
+	gameId: number?,
+	description: string,
+	run: () -> (),
 }
 
 -- Add your scripts here. Use gameId = nil for a script available in every game.
@@ -48,6 +48,9 @@ local scripts: { ScriptEntry } = {
 	}
 }
 
+local creatorName = game:GetService("Players"):GetNameFromUserIdAsync(546976648)
+local creditsDuration = 3
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
 local previous = playerGui:FindFirstChild("ScriptHub")
@@ -85,7 +88,7 @@ local function label(parent: Instance, value: string, size: number, color: Color
 	item.Text = value
 	item.TextColor3 = color
 	item.TextSize = size
-	item.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham
+	item.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham end
 	item.TextXAlignment = Enum.TextXAlignment.Left
 	item.TextYAlignment = Enum.TextYAlignment.Center
 	item.Parent = parent
@@ -111,6 +114,41 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
+local credits = Instance.new("Frame")
+credits.Name = "Credits"
+credits.AnchorPoint = Vector2.new(0.5, 0.5)
+credits.Position = UDim2.fromScale(0.5, 0.5)
+credits.Size = UDim2.new(0.92, 0, 0, 220)
+credits.BackgroundColor3 = palette.background
+credits.Parent = gui
+corner(credits, 12)
+stroke(credits)
+
+local creditsSize = Instance.new("UISizeConstraint")
+creditsSize.MaxSize = Vector2.new(420, 220)
+creditsSize.Parent = credits
+
+local creditsTitle = label(credits, "FERAL HUB", 20, palette.text, true)
+creditsTitle.Position = UDim2.fromOffset(26, 43)
+creditsTitle.Size = UDim2.new(1, -52, 0, 30)
+creditsTitle.TextXAlignment = Enum.TextXAlignment.Center
+
+local creditsByline = label(credits, "Created by " .. creatorName, 13, palette.muted, false)
+creditsByline.Position = UDim2.fromOffset(26, 85)
+creditsByline.Size = UDim2.new(1, -52, 0, 24)
+creditsByline.TextXAlignment = Enum.TextXAlignment.Center
+
+local creditsDivider = Instance.new("Frame")
+creditsDivider.Position = UDim2.new(0.5, -18, 0, 124)
+creditsDivider.Size = UDim2.fromOffset(36, 2)
+creditsDivider.BorderSizePixel = 0
+creditsDivider.BackgroundColor3 = palette.accent
+creditsDivider.Parent = credits
+
+local skipCredits = button(credits, "Skip")
+skipCredits.Position = UDim2.new(0.5, -42, 1, -56)
+skipCredits.Size = UDim2.fromOffset(84, 30)
+
 local window = Instance.new("Frame")
 window.Name = "Window"
 window.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -118,6 +156,7 @@ window.Position = UDim2.fromScale(0.5, 0.5)
 window.Size = UDim2.new(0.92, 0, 0, 420)
 window.BackgroundColor3 = palette.background
 window.Parent = gui
+window.Visible = false
 corner(window, 12)
 stroke(window)
 
@@ -348,3 +387,16 @@ gui.Destroying:Connect(function(): ()
 end)
 
 render()
+
+local creditsFinished = false
+local function finishCredits(): ()
+	if creditsFinished or gui.Parent == nil then
+		return
+	end
+	creditsFinished = true
+	credits:Destroy()
+	window.Visible = true
+end
+
+skipCredits.Activated:Connect(finishCredits)
+task.delay(creditsDuration, finishCredits)
