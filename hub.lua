@@ -88,7 +88,7 @@ local function label(parent: Instance, value: string, size: number, color: Color
 	item.Text = value
 	item.TextColor3 = color
 	item.TextSize = size
-	item.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham end
+	item.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham
 	item.TextXAlignment = Enum.TextXAlignment.Left
 	item.TextYAlignment = Enum.TextYAlignment.Center
 	item.Parent = parent
