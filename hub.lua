@@ -12,7 +12,10 @@ type ScriptEntry = {
 	run: () -> (),
 }
 
--- Add your scripts here. Use gameId = nil for a script available in every game.
+local function gameCheck(targetPlace: number)
+    if game.PlaceId ~= targetPlace then return false else return true end
+end
+
 local scripts: { ScriptEntry } = {
     {
 		id = "industrialist",
@@ -20,6 +23,12 @@ local scripts: { ScriptEntry } = {
 		gameId = 3448264866,
 		description = "Removes grass and pollution lighting effects. Shows RP/s and Pollution/HR",
 		run = function(): ()
+
+            local gID = 3448264866
+
+            local check = gameCheck(gID)
+            if not check then error("Incorrect game. You are in " .. game.GameId .. ". Script requires " .. gID .. ".") end
+			
 			local source = game:HttpGet("https://just-a.puppyonthewifi.com/p/raw/TDM4JZFp")
             local scriptFunction = loadstring(source)
 
@@ -36,6 +45,12 @@ local scripts: { ScriptEntry } = {
 		gameId = 964540701,
 		description = "Automatically hits notes ingame, Does not move cursor (you can larp!)",
 		run = function(): ()
+
+            local gID = 964540701
+
+            local check = gameCheck(gID)
+            if not check then error("Incorrect game. You are in " .. game.GameId .. ". Script requires " .. gID .. ".") end
+
 			local source = game:HttpGet("https://just-a.puppyonthewifi.com/p/raw/p3PxRgml")
             local scriptFunction = loadstring(source)
 
@@ -180,13 +195,13 @@ local subtitle = label(header, "Scripts I made, Easy to find.", 11, palette.mute
 subtitle.Position = UDim2.fromOffset(20, 30)
 subtitle.Size = UDim2.new(1, -112, 0, 16)
 
-local close = button(header, "×")
+local close = button(header, "Ã—")
 close.Name = "Close"
 close.Position = UDim2.new(1, -39, 0, 15)
 close.Size = UDim2.fromOffset(25, 25)
 close.TextSize = 20
 
-local minimize = button(header, "−")
+local minimize = button(header, "âˆ’")
 minimize.Name = "Minimize"
 minimize.Position = UDim2.new(1, -70, 0, 15)
 minimize.Size = UDim2.fromOffset(25, 25)
@@ -314,7 +329,7 @@ local function render(): ()
 		run.BackgroundColor3 = palette.accent
 		run.TextColor3 = palette.background
 		run.Activated:Connect(function(): ()
-			status.Text = "Running " .. entry.name .. "…"
+			status.Text = "Running " .. entry.name .. "â€¦"
 			status.TextColor3 = palette.muted
 			local ok, err = pcall(function(): string
 				entry.run()
@@ -343,7 +358,7 @@ local collapsed = false
 minimize.Activated:Connect(function(): ()
 	collapsed = not collapsed
 	body.Visible = not collapsed
-	minimize.Text = if collapsed then "+" else "−"
+	minimize.Text = if collapsed then "+" else "âˆ’"
 	TweenService:Create(window, TweenInfo.new(0.16, Enum.EasingStyle.Quad), {
 		Size = if collapsed then UDim2.new(0.92, 0, 0, 58) else UDim2.new(0.92, 0, 0, 420),
 	}):Play()
