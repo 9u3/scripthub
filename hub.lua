@@ -1,67 +1,91 @@
 --!strict
 
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+
+local SCRIPT_MANIFEST_URL: string = "https://raw.githubusercontent.com/9u3/scripthub/refs/heads/main/scripts.json"
 
 type ScriptEntry = {
 	id: string,
 	name: string,
 	gameId: number?,
 	description: string,
-	run: () -> (),
+	sourceUrl: string,
 }
 
-local function gameCheck(targetPlace: number)
-    if game.PlaceId ~= targetPlace then return false else return true end
+type ManifestDocument = {
+	version: number?,
+	scripts: {any},
+}
+
+type ManifestState = "loading" | "ready" | "error"
+
+local scripts: {ScriptEntry} = {}
+local manifestState: ManifestState = "loading"
+local manifestMessage: string = "Loading the script list..."
+
+local function readManifestEntry(value: any, index: number): ScriptEntry
+	if type(value) ~= "table" then
+		error(string.format("Entry %d must be an object.", index))
+	end
+	if type(value.id) ~= "string" or value.id == "" then
+		error(string.format("Entry %d has no valid id.", index))
+	end
+	if type(value.name) ~= "string" or value.name == "" then
+		error(string.format("Entry %d has no valid name.", index))
+	end
+	if type(value.description) ~= "string" then
+		error(string.format("Entry %d has no valid description.", index))
+	end
+	if type(value.sourceUrl) ~= "string" or not value.sourceUrl:match("^https://") then
+		error(string.format("Entry %d has no valid HTTPS sourceUrl.", index))
+	end
+	if value.gameId ~= nil and type(value.gameId) ~= "number" then
+		error(string.format("Entry %d has an invalid gameId.", index))
+	end
+	return {
+		id = value.id,
+		name = value.name,
+		gameId = value.gameId,
+		description = value.description,
+		sourceUrl = value.sourceUrl,
+	}
 end
 
-local scripts: { ScriptEntry } = {
-    {
-		id = "industrialist",
-		name = "Industrialist Helper",
-		gameId = 3448264866,
-		description = "Removes grass and pollution lighting effects. Shows RP/s and Pollution/HR",
-		run = function(): ()
+local function fetchManifest(): {ScriptEntry}
+	local requestUrl: string = SCRIPT_MANIFEST_URL .. "?v=" .. tostring(os.time())
+	local body: string = game:HttpGet(requestUrl)
+	local decoded: any = HttpService:JSONDecode(body)
+	if type(decoded) ~= "table" or type(decoded.scripts) ~= "table" then
+		error("Manifest root must contain a scripts array.")
+	end
 
-            local gID = 3448264866
+	local document: ManifestDocument = decoded :: ManifestDocument
+	local entries: {ScriptEntry} = {}
+	local ids: {[string]: boolean} = {}
+	for index: number, value: any in document.scripts do
+		if type(value) ~= "table" or value.enabled ~= false then
+			local entry: ScriptEntry = readManifestEntry(value, index)
+			if ids[entry.id] then
+				error("Duplicate manifest id: " .. entry.id)
+			end
+			ids[entry.id] = true
+			table.insert(entries, entry)
+		end
+	end
+	return entries
+end
 
-            local check = gameCheck(gID)
-            if not check then error("Incorrect game. You are in " .. game.GameId .. ". Script requires " .. gID .. ".") end
-			
-			local source = game:HttpGet("https://just-a.puppyonthewifi.com/p/raw/TDM4JZFp")
-            local scriptFunction = loadstring(source)
-
-            if scriptFunction == nil then
-                error("Industrialist Helper failed to compile / or is deleted.")
-            end
-
-            scriptFunction()
-		end,
-	},
-    {
-		id = "soundspace",
-		name = "SoundSpace Player",
-		gameId = 964540701,
-		description = "Automatically hits notes ingame, Does not move cursor (you can larp!)",
-		run = function(): ()
-
-            local gID = 964540701
-
-            local check = gameCheck(gID)
-            if not check then error("Incorrect game. You are in " .. game.GameId .. ". Script requires " .. gID .. ".") end
-
-			local source = game:HttpGet("https://just-a.puppyonthewifi.com/p/raw/p3PxRgml")
-            local scriptFunction = loadstring(source)
-
-            if scriptFunction == nil then
-                error("SoundSpace Player failed to compile / or is deleted.")
-            end
-
-            scriptFunction()
-		end,
-	}
-}
+local function runEntry(entry: ScriptEntry): ()
+	local source: string = game:HttpGet(entry.sourceUrl)
+	local scriptFunction: (() -> any)?, compileError: string? = loadstring(source)
+	if not scriptFunction then
+		error(entry.name .. " failed to compile: " .. tostring(compileError))
+	end
+	scriptFunction()
+end
 
 local creatorName = game:GetService("Players"):GetNameFromUserIdAsync(546976648)
 local creditsDuration = 3
@@ -195,13 +219,13 @@ local subtitle = label(header, "Scripts I made, Easy to find.", 11, palette.mute
 subtitle.Position = UDim2.fromOffset(20, 30)
 subtitle.Size = UDim2.new(1, -112, 0, 16)
 
-local close = button(header, "Ã—")
+local close = button(header, "X")
 close.Name = "Close"
 close.Position = UDim2.new(1, -39, 0, 15)
 close.Size = UDim2.fromOffset(25, 25)
 close.TextSize = 20
 
-local minimize = button(header, "âˆ’")
+local minimize = button(header, "-")
 minimize.Name = "Minimize"
 minimize.Position = UDim2.new(1, -70, 0, 15)
 minimize.Size = UDim2.fromOffset(25, 25)
@@ -295,7 +319,14 @@ local function render(): ()
 
 	count.Text = tostring(#visible) .. (if #visible == 1 then " script" else " scripts")
 	if #visible == 0 then
-		local empty = label(list, if #scripts == 0 then "No scripts yet. Add entries to the scripts table near the top of this file." else "No scripts match this view.", 13, palette.muted, false)
+		local emptyText: string = if manifestState == "loading"
+			then "Loading scripts..."
+			elseif manifestState == "error"
+			then manifestMessage
+			elseif #scripts == 0
+			then "No scripts are currently published."
+			else "No scripts match this view."
+		local empty = label(list, emptyText, 13, palette.muted, false)
 		empty.Size = UDim2.new(1, -8, 0, 64)
 		empty.TextWrapped = true
 		return
@@ -329,10 +360,13 @@ local function render(): ()
 		run.BackgroundColor3 = palette.accent
 		run.TextColor3 = palette.background
 		run.Activated:Connect(function(): ()
-			status.Text = "Running " .. entry.name .. "â€¦"
+			status.Text = "Running " .. entry.name .. "..."
 			status.TextColor3 = palette.muted
 			local ok, err = pcall(function(): string
-				entry.run()
+				if entry.gameId ~= nil and entry.gameId ~= game.GameId then
+					error(string.format("Incorrect game. You are in %d. %s requires %d.", game.GameId, entry.name, entry.gameId))
+				end
+				runEntry(entry)
 				return ""
 			end)
 			if ok then
@@ -358,7 +392,7 @@ local collapsed = false
 minimize.Activated:Connect(function(): ()
 	collapsed = not collapsed
 	body.Visible = not collapsed
-	minimize.Text = if collapsed then "+" else "âˆ’"
+	minimize.Text = if collapsed then "+" else "-"
 	TweenService:Create(window, TweenInfo.new(0.16, Enum.EasingStyle.Quad), {
 		Size = if collapsed then UDim2.new(0.92, 0, 0, 58) else UDim2.new(0.92, 0, 0, 420),
 	}):Play()
@@ -402,6 +436,22 @@ gui.Destroying:Connect(function(): ()
 end)
 
 render()
+task.spawn(function(): ()
+	local ok: boolean, result: any = pcall(fetchManifest)
+	if ok then
+		scripts = result :: {ScriptEntry}
+		manifestState = "ready"
+		manifestMessage = string.format("Loaded %d scripts.", #scripts)
+		status.Text = manifestMessage
+		status.TextColor3 = palette.accent
+	else
+		manifestState = "error"
+		manifestMessage = "Could not load the script list: " .. tostring(result)
+		status.Text = manifestMessage
+		status.TextColor3 = palette.danger
+	end
+	render()
+end)
 
 local creditsFinished = false
 local function finishCredits(): ()
