@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "id": "industrialist",
+      "name": "Industrialist Helper",
+      "gameId": 3448264866,
+      "description": "Removes grass and pollution lighting effects. Shows RP/s and Pollution/HR",
+      "sourceUrl": "https://just-a.puppyonthewifi.com/p/raw/TDM4JZFp",
+      "enabled": true
+    },
+    {
+      "id": "soundspace",
+      "name": "SoundSpace Player",
+      "gameId": 964540701,
+      "description": "Automatically hits notes ingame, Does not move cursor (you can larp!)",
+      "sourceUrl": "https://just-a.puppyonthewifi.com/p/raw/p3PxRgml",
+      "enabled": true
+    }
+  ]
+}
